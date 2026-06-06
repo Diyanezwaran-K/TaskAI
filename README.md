@@ -1,5 +1,7 @@
 # TaskAI 🚀
 
+**Live Demo:** [task-ai-chi.vercel.app](https://task-ai-chi.vercel.app/)
+
 TaskAI is a smart, vanilla JavaScript-based task manager that uses AI to analyze, prioritize, and summarize your daily work. 
 
 ## ✨ Features
