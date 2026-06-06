@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskAI Smart Task Manager</title>
+  <link rel="stylesheet" href="style.css?v=9" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script src="app.js?v=9" defer></script>
+</head>
+
+<body>
+  <div id="authView" class="auth-shell">
+    <section class="auth-panel" aria-labelledby="authTitle">
+      <div class="brand-row">
+        <span class="brand-mark">T</span>
+        <div>
+          <p class="eyebrow">TaskAI</p>
+          <h1 id="authTitle">Smart Task Manager</h1>
+        </div>
+      </div>
+
+      <div class="segmented" role="tablist" aria-label="Authentication mode">
+        <button id="signInTab" class="segment active" type="button">Sign in</button>
+        <button id="signUpTab" class="segment" type="button">Create account</button>
+      </div>
+
+      <form id="authForm" class="stack-form">
+        <label id="nameGroup" class="field hidden">
+          <span>Name</span>
+          <input id="authName" name="name" autocomplete="name" placeholder=" Name to display " />
+        </label>
+
+        <label class="field">
+          <span>Email</span>
+          <input id="authEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input id="authPassword" name="password" type="password" autocomplete="current-password"
+            placeholder="Minimum 6 characters" required />
+        </label>
+
+        <p id="authError" class="form-error" role="alert"></p>
+        <button id="authSubmit" class="primary-button full" type="submit">Sign in</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="appView" class="app-shell hidden">
+    <header class="topbar">
+      <div class="brand-row compact">
+        <span class="brand-mark">T</span>
+        <div>
+          <p class="eyebrow">TaskAI</p>
+          <h1 id="workspaceTitle">Workspace</h1>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <span id="userBadge" class="user-badge"></span>
+        <button id="summaryBtn" class="tool-button" type="button">
+          <i data-lucide="sparkles"></i>
+          Daily summary
+        </button>
+        <button id="settingsBtn" class="icon-button" type="button" aria-label="Settings" title="Settings">
+          <i data-lucide="settings"></i>
+        </button>
+        <button id="logoutBtn" class="icon-button" type="button" aria-label="Log out" title="Log out">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="composer-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">New task</p>
+          <h2>Add work</h2>
+        </div>
+
+        <form id="taskForm" class="stack-form">
+          <label class="field">
+            <span>Task</span>
+            <input id="taskTitle" name="title" maxlength="90" placeholder="Submit task" required />
+          </label>
+
+          <label class="field">
+            <span>Details</span>
+            <textarea id="taskNotes" name="notes" rows="4" maxlength="320"
+              placeholder="Add context, blockers, links, or acceptance notes"></textarea>
+          </label>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>Category</span>
+              <select id="taskCategory" name="category">
+                <option>Internship</option>
+                <option>Learning</option>
+                <option>Project</option>
+                <option>Personal</option>
+                <option>Admin</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Due date & time</span>
+              <div style="display: flex; gap: 8px;">
+                <input id="taskDueDate" name="dueDate" type="date" style="flex: 1;" />
+                <input id="taskDueTime" name="dueTime" type="time" style="flex: 1;" />
+              </div>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Priority</span>
+            <select id="taskPriority" name="priority">
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+
+          <div id="draftInsight" class="draft-insight hidden" aria-live="polite"></div>
+
+          <div class="button-row">
+            <button id="analyzeDraftBtn" class="secondary-button" type="button">
+              <i data-lucide="wand-sparkles"></i>
+              AI prioritize
+            </button>
+            <button class="primary-button" type="submit">
+              <i data-lucide="plus"></i>
+              Add task
+            </button>
+          </div>
+        </form>
+      </aside>
+
+      <section class="main-panel" aria-labelledby="tasksTitle">
+        <div class="control-band">
+          <label class="search-box">
+            <i data-lucide="search"></i>
+            <input id="searchInput" placeholder="Search tasks" />
+          </label>
+
+          <select id="statusFilter" aria-label="Status filter">
+            <option value="all">All status</option>
+            <option value="open">Open</option>
+            <option value="done">Done</option>
+            <option value="overdue">Overdue</option>
+          </select>
+
+          <select id="priorityFilter" aria-label="Priority filter">
+            <option value="all">All priority</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          <select id="categoryFilter" aria-label="Category filter">
+            <option value="all">All categories</option>
+          </select>
+        </div>
+
+        <section class="metrics-grid" aria-label="Task metrics">
+          <article class="metric-card">
+            <span class="metric-label">Open</span>
+            <strong id="openCount">0</strong>
+          </article>
+          <article class="metric-card accent-coral">
+            <span class="metric-label">Due soon</span>
+            <strong id="dueSoonCount">0</strong>
+          </article>
+          <article class="metric-card accent-green">
+            <span class="metric-label">Completion</span>
+            <strong id="completionRate">0%</strong>
+          </article>
+          <article class="metric-card accent-blue">
+            <span class="metric-label">Done today</span>
+            <strong id="doneTodayCount">0</strong>
+          </article>
+        </section>
+
+        <section class="analytics-grid" aria-label="Analytics">
+          <div class="analytics-panel">
+            <div class="panel-heading inline">
+              <p class="eyebrow">Priority</p>
+              <h2>Distribution</h2>
+            </div>
+            <div id="priorityChart" class="bar-list"></div>
+          </div>
+
+          <div class="analytics-panel">
+            <div class="panel-heading inline">
+              <p class="eyebrow">Categories</p>
+              <h2>Progress</h2>
+            </div>
+            <div id="categoryChart" class="bar-list"></div>
+          </div>
+        </section>
+
+        <div class="tasks-heading">
+          <div>
+            <p class="eyebrow">Queue</p>
+            <h2 id="tasksTitle">Tasks</h2>
+          </div>
+          <span id="visibleCount" class="count-pill">0 shown</span>
+        </div>
+
+        <div id="taskList" class="task-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="settingsDialog" class="modal">
+    <form id="settingsForm" class="modal-content">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Settings</p>
+          <h2>AI connection</h2>
+        </div>
+        <button id="closeSettingsBtn" class="icon-button" type="button" aria-label="Close" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <label class="field">
+        <span>Anthropic API key</span>
+        <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-ant-..." />
+      </label>
+
+      <label class="field">
+        <span>Model</span>
+        <input id="modelInput" autocomplete="off" value="claude-3-5-haiku-20241022" />
+      </label>
+
+      <div class="button-row right">
+        <button id="cancelSettingsBtn" class="secondary-button" type="button">Cancel</button>
+        <button class="primary-button" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="summaryDialog" class="modal wide">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">TaskAI</p>
+          <h2>Daily summary</h2>
+        </div>
+        <button id="closeSummaryBtn" class="icon-button" type="button" aria-label="Close" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="summaryContent" class="summary-content"></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+
+</html>
