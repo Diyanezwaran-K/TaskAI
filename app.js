@@ -157,8 +157,10 @@ async function handleAuthSubmit(event) {
   setLoading(els.authSubmit, true);
 
   try {
+    els.authError.style.color = ""; // Reset to default error color
+
     if (state.authMode === "signup") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -166,7 +168,12 @@ async function handleAuthSubmit(event) {
         }
       });
       if (error) throw error;
-      // onAuthStateChange handles the UI transition
+      
+      if (data.user && data.session === null) {
+        setAuthError("Account created! Please check your email to verify your account.");
+        els.authError.style.color = "var(--color-primary, #4A90E2)"; 
+      }
+      // onAuthStateChange handles the UI transition if auto-login occurs
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
