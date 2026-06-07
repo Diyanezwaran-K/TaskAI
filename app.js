@@ -141,6 +141,7 @@ function setAuthMode(mode) {
   els.signInTab.classList.toggle("active", !isSignup);
   els.signUpTab.classList.toggle("active", isSignup);
   els.nameGroup.classList.toggle("hidden", !isSignup);
+  els.forgotPasswordBtn.classList.toggle("hidden", isSignup);
   els.authSubmit.textContent = isSignup ? "Create account" : "Sign in";
   els.authPassword.autocomplete = isSignup ? "new-password" : "current-password";
   els.authError.textContent = "";
