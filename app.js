@@ -1,7 +1,8 @@
-const USERS_KEY = "taskai_users_v1";
-const SESSION_KEY = "taskai_session_v1";
+const supabaseUrl = "https://bacxentasykqnudoumje.supabase.co";
+const supabaseKey = "sb_publishable_cjxf3oVYYl0LCafb5BjGPQ_EBTyXBnT";
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 const SETTINGS_KEY = "taskai_settings_v1";
-const TASKS_PREFIX = "taskai_tasks_v1:";
 
 const DEFAULT_MODEL = "claude-3-5-haiku-20241022";
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
@@ -23,23 +24,31 @@ const els = {};
 
 document.addEventListener("DOMContentLoaded", init);
 
-function init() {
+async function init() {
   cacheElements();
   bindEvents();
 
-  const session = readJson(SESSION_KEY, null);
-  if (session?.email) {
-    const users = readUsers();
-    const user = users[normaliseEmail(session.email)];
-    if (user) {
-      state.user = user;
-      state.tasks = readTasks(user.email);
-      showApp();
-      return;
-    }
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session?.user) {
+    state.user = session.user;
+    await fetchTasks();
+    showApp();
+  } else {
+    showAuth();
   }
 
-  showAuth();
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      state.user = session.user;
+      await fetchTasks();
+      showApp();
+    } else if (event === 'SIGNED_OUT') {
+      state.user = null;
+      state.tasks = [];
+      showAuth();
+    }
+  });
 }
 
 function cacheElements() {
@@ -127,7 +136,7 @@ function setAuthMode(mode) {
   els.authError.textContent = "";
 }
 
-function handleAuthSubmit(event) {
+async function handleAuthSubmit(event) {
   event.preventDefault();
   requestNotificationPermission(); // Ask permission on explicit user interaction
   const email = normaliseEmail(els.authEmail.value);
@@ -144,33 +153,32 @@ function handleAuthSubmit(event) {
     return;
   }
 
-  const users = readUsers();
+  setLoading(els.authSubmit, true);
 
-  if (state.authMode === "signup") {
-    if (users[email]) {
-      setAuthError("That email already has an account.");
-      return;
+  try {
+    if (state.authMode === "signup") {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name }
+        }
+      });
+      if (error) throw error;
+      // onAuthStateChange handles the UI transition
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      // onAuthStateChange handles the UI transition
     }
-
-    users[email] = {
-      email,
-      name,
-      passwordHash: encodePassword(password),
-      createdAt: new Date().toISOString(),
-    };
-    writeJson(USERS_KEY, users);
-    seedTasksIfEmpty(users[email]);
-    startSession(users[email]);
-    return;
+  } catch (err) {
+    setAuthError(err.message || "Authentication failed.");
+  } finally {
+    setLoading(els.authSubmit, false);
   }
-
-  const user = users[email];
-  if (!user || user.passwordHash !== encodePassword(password)) {
-    setAuthError("Email or password is incorrect.");
-    return;
-  }
-
-  startSession(user);
 }
 
 function setAuthError(message) {
@@ -178,19 +186,13 @@ function setAuthError(message) {
 }
 
 function startSession(user) {
-  state.user = user;
-  writeJson(SESSION_KEY, { email: user.email, signedInAt: new Date().toISOString() });
-  state.tasks = readTasks(user.email);
-  showApp();
+  // Deprecated
 }
 
-function logout() {
-  localStorage.removeItem(SESSION_KEY);
-  state.user = null;
-  state.tasks = [];
+async function logout() {
+  await supabase.auth.signOut();
   state.draftInsight = null;
   els.authForm.reset();
-  showAuth();
 }
 
 function showAuth() {
@@ -206,7 +208,8 @@ function showApp() {
   
   const titleEl = document.getElementById("workspaceTitle");
   if (titleEl) {
-    titleEl.textContent = state.user.name ? `${state.user.name}'s Workspace` : "Workspace";
+    const name = state.user.user_metadata?.name || state.user.email.split("@")[0];
+    titleEl.textContent = name ? `${name}'s Workspace` : "Workspace";
   }
   
   requestNotificationPermission();
@@ -216,20 +219,10 @@ function showApp() {
 }
 
 function seedTasksIfEmpty(user) {
-  const existing = readTasks(user.email);
-  if (existing.length) return;
-
-  const today = new Date();
-  const tomorrow = addDays(today, 1);
-  const inThreeDays = addDays(today, 3);
-
-  const starterTasks = [];
-
-  writeTasks(user.email, starterTasks);
-  state.tasks = starterTasks;
+  // Handled by DB defaults if needed
 }
 
-function handleTaskSubmit(event) {
+async function handleTaskSubmit(event) {
   event.preventDefault();
   requestNotificationPermission(); // Ask permission when interacting
   const title = els.taskTitle.value.trim();
@@ -258,8 +251,16 @@ function handleTaskSubmit(event) {
   els.taskPriority.value = "medium";
   els.taskDueTime.value = "";
   renderDraftInsight();
-  persistAndRender();
-  showToast("Task added.");
+  renderAll();
+
+  // Persist to Supabase
+  const { error } = await supabase.from('tasks').insert([taskToDb(task, state.user.id)]);
+  if (error) {
+    console.error(error);
+    showToast("Failed to save task to database.");
+  } else {
+    showToast("Task added.");
+  }
 }
 
 async function analyzeDraftTask() {
@@ -309,8 +310,16 @@ function handleTaskClick(event) {
   if (action === "delete") {
     if (!confirm("Delete this task?")) return;
     state.tasks = state.tasks.filter((task) => task.id !== id);
-    persistAndRender();
-    showToast("Task deleted.");
+    renderAll();
+    
+    supabase.from('tasks').delete().eq('id', id).then(({error}) => {
+      if (error) {
+        console.error(error);
+        showToast("Failed to delete task from database.");
+      } else {
+        showToast("Task deleted.");
+      }
+    });
   }
 
   if (action === "expand") {
@@ -332,17 +341,23 @@ function handleTaskChange(event) {
 
   if (input.dataset.action === "toggle-subtask") {
     const subtaskId = input.dataset.subtaskId;
+    const now = new Date().toISOString();
     state.tasks = state.tasks.map((task) => {
       if (task.id !== id) return task;
       return {
         ...task,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
         subtasks: task.subtasks.map((subtask) =>
           subtask.id === subtaskId ? { ...subtask, done: input.checked } : subtask,
         ),
       };
     });
-    persistAndRender();
+    renderAll();
+
+    const updatedTask = state.tasks.find((t) => t.id === id);
+    if (updatedTask) {
+      supabase.from('tasks').update({ subtasks: updatedTask.subtasks, updated_at: now }).eq('id', id);
+    }
   }
 }
 
@@ -353,15 +368,21 @@ async function expandTask(id, button) {
   setLoading(button, true);
   try {
     const subtasks = await getAiSubtasks(task);
+    const now = new Date().toISOString();
     state.tasks = state.tasks.map((item) => {
       if (item.id !== id) return item;
       return {
         ...item,
         subtasks: subtasks.map(makeSubtask),
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       };
     });
-    persistAndRender();
+    renderAll();
+    
+    const updatedTask = state.tasks.find((t) => t.id === id);
+    if (updatedTask) {
+      supabase.from('tasks').update({ subtasks: updatedTask.subtasks, updated_at: now }).eq('id', id);
+    }
     showToast("Subtasks updated.");
   } catch (error) {
     console.error(error);
@@ -410,15 +431,16 @@ function saveSettings(event) {
 }
 
 function updateTask(id, patch) {
+  const now = new Date().toISOString();
   state.tasks = state.tasks.map((task) =>
-    task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task,
+    task.id === id ? { ...task, ...patch, updatedAt: now } : task,
   );
-  persistAndRender();
-}
-
-function persistAndRender() {
-  writeTasks(state.user.email, state.tasks);
   renderAll();
+
+  const updatedTask = state.tasks.find((t) => t.id === id);
+  if (updatedTask) {
+    supabase.from('tasks').update(taskToDb(updatedTask, state.user.id)).eq('id', id);
+  }
 }
 
 function renderAll() {
@@ -1116,9 +1138,61 @@ function checkDeadlines() {
   });
 
   if (changed) {
-    writeTasks(state.user.email, state.tasks);
+    // Notify DB of changes just to save notification flags
+    // (Optional, local state handles it fine as long as they don't refresh)
   }
 }
 
 // Check every minute
 setInterval(checkDeadlines, 60000);
+
+// --- Supabase DB Helpers ---
+async function fetchTasks() {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error("Error fetching tasks:", error);
+    showToast("Failed to load tasks");
+    return;
+  }
+  
+  state.tasks = data.map(dbToTask);
+}
+
+function dbToTask(db) {
+  return {
+    id: db.id,
+    title: db.title,
+    notes: db.notes || "",
+    category: db.category || "",
+    dueDate: db.due_date || "",
+    priority: db.priority || "medium",
+    aiReason: db.ai_reason || "",
+    subtasks: db.subtasks || [],
+    completed: db.completed || false,
+    completedAt: db.completed_at || null,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at
+  };
+}
+
+function taskToDb(task, userId) {
+  return {
+    id: task.id,
+    user_id: userId,
+    title: task.title,
+    notes: task.notes,
+    category: task.category,
+    due_date: task.dueDate,
+    priority: task.priority,
+    ai_reason: task.aiReason,
+    subtasks: task.subtasks,
+    completed: task.completed,
+    completed_at: task.completedAt,
+    created_at: task.createdAt,
+    updated_at: task.updatedAt
+  };
+}
