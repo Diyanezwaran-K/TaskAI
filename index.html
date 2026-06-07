@@ -45,7 +45,10 @@
               placeholder="Minimum 6 characters" required />
           </label>
         </div>
-        <button id="forgotPasswordBtn" type="button" class="text-button" style="align-self: flex-end; font-size: 0.85rem; color: var(--color-text-light); background: none; border: none; cursor: pointer; padding: 0;">Forgot password?</button>
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <button id="resendEmailBtn" type="button" class="text-button hidden" style="font-size: 0.85rem; color: var(--color-text-light); background: none; border: none; cursor: pointer; padding: 0;">Didn't get email? Resend</button>
+          <button id="forgotPasswordBtn" type="button" class="text-button" style="font-size: 0.85rem; color: var(--color-text-light); background: none; border: none; cursor: pointer; padding: 0; margin-left: auto;">Forgot password?</button>
+        </div>
 
         <p id="authError" class="form-error" role="alert"></p>
         <button id="authSubmit" class="primary-button full" type="submit">Sign in</button>

@@ -104,6 +104,7 @@ function cacheElements() {
     "cancelSettingsBtn",
     "toast",
     "forgotPasswordBtn",
+    "resendEmailBtn",
     "resetPasswordDialog",
     "resetPasswordForm",
     "newPasswordInput",
@@ -117,6 +118,7 @@ function bindEvents() {
   els.signUpTab.addEventListener("click", () => setAuthMode("signup"));
   els.authForm.addEventListener("submit", handleAuthSubmit);
   els.forgotPasswordBtn.addEventListener("click", handleForgotPassword);
+  els.resendEmailBtn.addEventListener("click", handleResendEmail);
   els.resetPasswordForm.addEventListener("submit", handleResetPassword);
   els.logoutBtn.addEventListener("click", logout);
   els.taskForm.addEventListener("submit", handleTaskSubmit);
@@ -142,6 +144,7 @@ function setAuthMode(mode) {
   els.signUpTab.classList.toggle("active", isSignup);
   els.nameGroup.classList.toggle("hidden", !isSignup);
   els.forgotPasswordBtn.classList.toggle("hidden", isSignup);
+  els.resendEmailBtn.classList.toggle("hidden", !isSignup);
   els.authSubmit.textContent = isSignup ? "Create account" : "Sign in";
   els.authPassword.autocomplete = isSignup ? "new-password" : "current-password";
   els.authError.textContent = "";
@@ -201,6 +204,32 @@ async function handleAuthSubmit(event) {
 
 function setAuthError(message) {
   els.authError.textContent = message;
+}
+
+async function handleResendEmail() {
+  const email = normaliseEmail(els.authEmail.value);
+  if (!email) {
+    els.authError.style.color = "var(--color-danger, #e74c3c)";
+    setAuthError("Please enter your email address to resend the verification link.");
+    return;
+  }
+  
+  setLoading(els.resendEmailBtn, true, "Sending...");
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    });
+    if (error) throw error;
+    
+    els.authError.style.color = "var(--color-primary, #4A90E2)";
+    setAuthError("Verification email resent! Please check your inbox and spam folder.");
+  } catch (err) {
+    els.authError.style.color = "var(--color-danger, #e74c3c)";
+    setAuthError(err.message || "Failed to resend email.");
+  } finally {
+    setLoading(els.resendEmailBtn, false);
+  }
 }
 
 async function handleForgotPassword() {
