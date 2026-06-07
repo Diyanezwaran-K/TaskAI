@@ -1,3 +1,4 @@
+(function() {
 const supabaseUrl = "https://bacxentasykqnudoumje.supabase.co";
 const supabaseKey = "sb_publishable_cjxf3oVYYl0LCafb5BjGPQ_EBTyXBnT";
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -1196,3 +1197,4 @@ function taskToDb(task, userId) {
     updated_at: task.updatedAt
   };
 }
+})();
