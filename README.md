@@ -11,13 +11,14 @@ TaskAI is a smart, vanilla JavaScript-based task manager that uses AI to analyze
 - **Smart Notifications:** Browser push notifications automatically trigger 1 day, 1 hour, and 10 minutes before a task is due.
 - **Advanced Filtering & Search:** Filter by Status, Priority, Category, and live search.
 - **Dynamic Metrics Dashboard:** Real-time completion rates, open tasks, due soon metrics, and charts.
-- **Local Storage:** Zero-backend setup. All data is saved directly in your browser.
-- **Authentication Simulation:** Built-in multi-user emulation. 
+- **Cloud Database (Supabase):** All tasks are synced and persisted in real-time to a secure cloud database.
+- **Secure Authentication:** Full authentication flow using Supabase Auth, including email verification, login, secure password reset, and resend verification emails.
 
 ## 🛠️ Tech Stack
 - HTML5
 - CSS3 (Vanilla, CSS Grid, Flexbox, Custom Properties)
 - JavaScript (Vanilla ES6)
+- Supabase (PostgreSQL Database & Auth)
 - Anthropic API (Claude 3.5 Haiku)
 
 ## 🚀 Getting Started
