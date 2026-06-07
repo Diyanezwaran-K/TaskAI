@@ -40,10 +40,13 @@ async function init() {
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
+    if (event === 'PASSWORD_RECOVERY') {
+      els.resetPasswordDialog.showModal();
+    } else if (event === 'SIGNED_IN' && session) {
       state.user = session.user;
       await fetchTasks();
       showApp();
+      els.resetPasswordDialog.close();
     } else if (event === 'SIGNED_OUT') {
       state.user = null;
       state.tasks = [];
@@ -100,6 +103,10 @@ function cacheElements() {
     "closeSettingsBtn",
     "cancelSettingsBtn",
     "toast",
+    "forgotPasswordBtn",
+    "resetPasswordDialog",
+    "resetPasswordForm",
+    "newPasswordInput",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -109,6 +116,8 @@ function bindEvents() {
   els.signInTab.addEventListener("click", () => setAuthMode("signin"));
   els.signUpTab.addEventListener("click", () => setAuthMode("signup"));
   els.authForm.addEventListener("submit", handleAuthSubmit);
+  els.forgotPasswordBtn.addEventListener("click", handleForgotPassword);
+  els.resetPasswordForm.addEventListener("submit", handleResetPassword);
   els.logoutBtn.addEventListener("click", logout);
   els.taskForm.addEventListener("submit", handleTaskSubmit);
   els.analyzeDraftBtn.addEventListener("click", analyzeDraftTask);
@@ -191,6 +200,57 @@ async function handleAuthSubmit(event) {
 
 function setAuthError(message) {
   els.authError.textContent = message;
+}
+
+async function handleForgotPassword() {
+  const email = normaliseEmail(els.authEmail.value);
+  if (!email) {
+    els.authError.style.color = "var(--color-danger, #e74c3c)";
+    setAuthError("Please enter your email address first to reset password.");
+    return;
+  }
+  
+  setLoading(els.forgotPasswordBtn, true, "Sending...");
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+    if (error) throw error;
+    
+    els.authError.style.color = "var(--color-primary, #4A90E2)";
+    setAuthError("Password reset email sent! Please check your inbox.");
+  } catch (err) {
+    els.authError.style.color = "var(--color-danger, #e74c3c)";
+    setAuthError(err.message || "Failed to send reset email.");
+  } finally {
+    setLoading(els.forgotPasswordBtn, false);
+  }
+}
+
+async function handleResetPassword(event) {
+  event.preventDefault();
+  const newPassword = els.newPasswordInput.value.trim();
+  
+  if (newPassword.length < 6) {
+    showToast("Password must be at least 6 characters");
+    return;
+  }
+  
+  const submitBtn = els.resetPasswordForm.querySelector('button[type="submit"]');
+  setLoading(submitBtn, true);
+  
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    
+    showToast("Password updated successfully!");
+    els.resetPasswordDialog.close();
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to update password.");
+  } finally {
+    setLoading(submitBtn, false);
+  }
 }
 
 function startSession(user) {

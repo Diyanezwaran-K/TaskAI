@@ -38,11 +38,14 @@
           <input id="authEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
         </label>
 
-        <label class="field">
-          <span>Password</span>
-          <input id="authPassword" name="password" type="password" autocomplete="current-password"
-            placeholder="Minimum 6 characters" required />
-        </label>
+        <div class="field-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <label class="field" style="width: 100%;">
+            <span>Password</span>
+            <input id="authPassword" name="password" type="password" autocomplete="current-password"
+              placeholder="Minimum 6 characters" required />
+          </label>
+        </div>
+        <button id="forgotPasswordBtn" type="button" class="text-button" style="align-self: flex-end; font-size: 0.85rem; color: var(--color-text-light); background: none; border: none; cursor: pointer; padding: 0;">Forgot password?</button>
 
         <p id="authError" class="form-error" role="alert"></p>
         <button id="authSubmit" class="primary-button full" type="submit">Sign in</button>
@@ -260,6 +263,26 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="resetPasswordDialog" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Security</p>
+          <h2>Set new password</h2>
+        </div>
+      </div>
+      <form id="resetPasswordForm" class="stack-form">
+        <label class="field">
+          <span>New Password</span>
+          <input id="newPasswordInput" type="password" placeholder="Minimum 6 characters" required minlength="6" />
+        </label>
+        <div class="button-row right">
+          <button class="primary-button" type="submit">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
 </body>
 
 </html>
